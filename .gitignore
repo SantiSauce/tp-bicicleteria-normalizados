@@ -9,15 +9,15 @@ Help.txt
 ENTORNO.md
 *.env
 
-# Logs y temporales
+# DER y Estrategia viven en el Drive del grupo: se copian a entrega\ solo para armar el zip
+entrega/*.jpg
+entrega/*.png
+entrega/*.pdf
+docs/
+
+# Logs, temporales y zips generados
 *.log
-herramientas/ultima-corrida.log
 ~$*
 *.tmp
-
-# Zips de entrega (se generan con herramientas\armar-entrega.ps1)
 *.zip
 *.zip123
-
-# Entrega: Estrategia.pdf se exporta de docs\Estrategia.docx antes de entregar
-# (lo dejamos versionado igual para saber qué se mandó)

@@ -1,6 +1,9 @@
 # TP FRBA Gestión de Bicicletería — K3521 — Grupo 1 NORMALIZADOS
 
-Trabajo práctico de Bases de Datos (UTN FRBA, 2C2026).
+Repo del **`script_creacion_inicial.sql`** (modelo relacional + migración) del TP de Bases de Datos, UTN FRBA 2C2026.
+El DER y el documento de Estrategia viven en el **Drive del grupo**, no acá.
+
+> ⚠️ **Repo privado.** El enunciado penaliza cualquier indicio de copia con la pérdida de la materia: no lo hagan público ni compartan el link.
 
 | Integrante | Legajo |
 |---|---|
@@ -9,42 +12,36 @@ Trabajo práctico de Bases de Datos (UTN FRBA, 2C2026).
 | Quispe, Adrián | 1501252 |
 | Galanti, Mateo (responsable) | 2089932 |
 
-> ⚠️ **Repo privado.** El enunciado penaliza cualquier indicio de copia con la pérdida de la materia: no lo hagan público ni compartan el link.
+**Entrega Modelo relacional + migración: 30/10/2026 hasta las 12:00.** Fecha final del TP: 14/12/2026 (hay 2 reentregas en total).
 
-## Entregas
+## Reparto de la migración
 
-| Entrega | Fecha (12:00 hs) | Qué se manda |
-|---|---|---|
-| DER | 01/10/2026 ✅ | Corregido → se manda con la siguiente |
-| **Modelo relacional + migración** | **30/10/2026** | `script_creacion_inicial.sql`, DER corregido, Estrategia.pdf |
-| BI | 25/11/2026 | lo anterior + `script_creacion_BI.sql`, DER_BI.jpg, Estrategia actualizada |
-| Fecha final | 14/12/2026 | Hay 2 reentregas en total |
+La migración está dividida en 4 partes. Cada archivo explica arriba **qué tablas carga, en qué orden, de qué columnas de la Maestra salen, qué criterio usar y cuántas filas se esperan**.
 
-Mail: `gestiondedatos.entregas@gmail.com` — asunto y nombre del zip: **`TP2C2026 k3521 NORMALIZADOS 1`** (zip renombrado a `.zip123`, máx. 20 MB). Lo manda **solo el responsable**.
+| Parte | Archivo | Tablas | Depende de | Responsable |
+|---|---|---|---|---|
+| 1 | `src/10_parte1_ubicacion_catalogos_locales.sql` | Provincia, Localidad, Tipo_Producto, 3 categorías, Marca, Local, Proveedor | — | _completar_ |
+| 2 | `src/20_parte2_clientes_empleados_modelos.sql` | Cliente, Empleado, Modelo_Bicicleta | 1 | _completar_ |
+| 3 | `src/30_parte3_productos_ventas_compras.sql` | Producto, Bicicleta, Accesorio, Venta, Detalle_Venta, Compra, Detalle_Compra | 1, 2 | _completar_ |
+| 4 | `src/40_parte4_alquileres_reparaciones.sql` | Bicicleta_Alquiler, Repuesto, Alquiler, Reparacion, Detalle_Reparacion | 1, 2 | _completar_ |
 
-### Correcciones del DER (ya aplicadas en `docs/der/`)
-1. Bicicleta_Alquiler → Local (cada local tiene su flota propia).
-2. Nuevas entidades Provincia y Localidad.
-3. Tipos de datos iguales a la Maestra.
+La parte 1 es la más corta y todas dependen de ella: conviene terminarla primero. Las partes 3 y 4 se pueden escribir en paralelo con la 2, pero para **probarlas** necesitan 1 y 2 cargadas.
 
 ## Estructura
 
 ```
-src/                      Script dividido por partes (cada uno edita la suya)
-  00_esquema.sql          USE GD2C_2026 + (re)creación del esquema NORMALIZADOS
-  01_tablas.sql           Tablas, PK, FK, UNIQUE y CHECK (según DER v2)
-  02_indices.sql          Índices
-  10..14_migracion_*.sql  Migración desde gd_esquema.Maestra   ← TODO
-  99_verificacion.sql     Conteos esperados (no va en la entrega)
-entrega/                  Lo que va dentro del zip
-  Readme.txt  DER.jpg  Estrategia.pdf
-  data/script_creacion_inicial.sql   ← GENERADO, no editar a mano
-docs/
-  Estrategia.docx         Fuente del documento de estrategia
-  der/der.dbml  DER.jpg   Fuente del DER (pegar en dbdiagram.io)
+src/                      El script, en partes (cada uno edita SOLO la suya)
+  00_esquema.sql          USE GD2C_2026 + (re)creación del esquema NORMALIZADOS     ✅ listo
+  01_tablas.sql           24 tablas con PK, FK, UNIQUE y CHECK (DER corregido)        ✅ listo y probado
+  02_indices.sql          Índices                                                     ✅ listo
+  10/20/30/40_parte*.sql  Migración, una parte por integrante                         ⏳ TODO
+  99_verificacion.sql     Conteos esperados por tabla (no va en la entrega)
+entrega/
+  Readme.txt              Datos del grupo (falta el mail del responsable)
+  data/script_creacion_inicial.sql   ← GENERADO desde src/, no editar a mano
 herramientas/
   restaurar-base.ps1      Restaura el .bak como GD2C_2026
-  correr-script.ps1       Genera el script y lo corre como la cátedra (+ conteos)
+  correr-script.ps1       Genera el script, lo corre como la cátedra y muestra los conteos
   armar-script.ps1        Une src/ en entrega/data/script_creacion_inicial.sql
   armar-entrega.ps1       Arma "TP2C2026 k3521 NORMALIZADOS 1.zip123"
   consultas/              Consultas que respaldan las decisiones del DER
@@ -53,33 +50,39 @@ base/                     Poner acá el .bak (no se sube)
 
 ## Puesta en marcha (cada uno, una vez)
 
-1. Instalar SQL Server 2022 Express + SSMS (instancia `localhost\SQLEXPRESS`).
+1. SQL Server 2022 Express + SSMS, instancia `localhost\SQLEXPRESS`.
 2. Clonar el repo y copiar `GD2C_2026_20260903_221157.bak` (aula virtual) en `base/`.
-3. Click derecho en `herramientas/restaurar-base.ps1` → *Ejecutar con PowerShell*. Restaura la base como **`GD2C_2026`**, que es el nombre que usa el script (`USE GD2C_2026`).
-   - Si ya la tenés restaurada con otro nombre, podés seguir usándola: `.\herramientas\correr-script.ps1 -Base TU_BASE`.
+3. Click derecho en `herramientas/restaurar-base.ps1` → *Ejecutar con PowerShell*. Restaura la base como **`GD2C_2026`** (el nombre que usa el script).
+   - Si ya la tenés con otro nombre: `.\herramientas\correr-script.ps1 -Base TU_BASE`.
 
 ## Cómo trabajamos
 
-- **Nunca editar** `entrega/data/script_creacion_inicial.sql`: se genera desde `src/`.
-- Cada uno trabaja en su archivo de `src/` (ver *Responsable* en el encabezado) en una rama propia:
-  ```
-  git checkout -b migracion-maestros
-  ... editar src/12_migracion_maestros.sql ...
-  .\herramientas\correr-script.ps1        # tiene que dar OK, sin warnings, < 10 min
-  git add src/12_migracion_maestros.sql
-  git commit -m "Migracion de clientes y empleados"
-  git push -u origin migracion-maestros   # y abrir un Pull Request
-  ```
-- Antes de mergear a `main`: el script completo corre de punta a punta sin errores y los conteos de `99_verificacion.sql` coinciden.
-- Reglas de la cátedra que hay que respetar en todo lo que se agregue:
-  - Todo objeto (tablas, SP, vistas, triggers, funciones) dentro del esquema `NORMALIZADOS`; si no, rechazan el TP.
-  - Migración 100 % T-SQL, en un único script, ejecutable una sola vez sin errores ni warnings, en menos de 10 minutos.
-  - **Cada sentencia comentada** explicando su intención.
+1. Rama propia por parte:
+   ```
+   git checkout main
+   git pull
+   git checkout -b parte2-clientes
+   ```
+2. Editar **solo** tu archivo de `src/`.
+3. Probar: `.\herramientas\correr-script.ps1` → tiene que dar **OK, sin warnings, en menos de 10 min**, y tus tablas en `OK` en la tabla de conteos.
+4. Commit chico y seguido (si alguien rompe algo, se vuelve al commit anterior):
+   ```
+   git add src/20_parte2_clientes_empleados_modelos.sql
+   git commit -m "Parte 2: migracion de empleados con local mas frecuente"
+   git push -u origin parte2-clientes
+   ```
+5. Abrir un **Pull Request** a `main`. Otro integrante lo revisa antes de mergear.
+
+**No commitear** `entrega/data/script_creacion_inicial.sql` desde las ramas (genera conflictos): se regenera en `main` cuando están las 4 partes.
+
+### Reglas de la cátedra (si no se cumplen, rechazan el TP sin corregir)
+- Todo objeto (tablas, SP, vistas, funciones, triggers) dentro del esquema `NORMALIZADOS`.
+- Migración 100 % T-SQL, un único script, se ejecuta **una vez** sobre la base limpia **sin errores ni warnings**, en **menos de 10 minutos**.
+- **Cada sentencia comentada** explicando su intención.
 
 ## Antes de entregar
-
-- [ ] `correr-script.ps1` OK sobre una base recién restaurada
-- [ ] Exportar `docs/Estrategia.docx` a `entrega/Estrategia.pdf` (con carátula e índice actualizado)
-- [ ] `entrega/DER.jpg` actualizado
-- [ ] Email del responsable en `entrega/Readme.txt`
-- [ ] `armar-entrega.ps1` → mandar el `.zip123` desde el mail del responsable
+- [ ] Las 4 partes mergeadas y `correr-script.ps1` OK sobre una base **recién restaurada**
+- [ ] Todos los conteos de `99_verificacion.sql` en OK (o explicados en la Estrategia)
+- [ ] Mail del responsable en `entrega/Readme.txt`
+- [ ] Copiar del Drive a `entrega/`: `Estrategia.pdf` (con carátula e índice) y `DER.jpg`
+- [ ] `armar-entrega.ps1` → mandar el `.zip123` desde el mail del responsable, asunto `TP2C2026 k3521 NORMALIZADOS 1`
