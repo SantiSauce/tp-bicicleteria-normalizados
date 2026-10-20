@@ -10,9 +10,12 @@ $nombre  = 'TP2C2026 k3521 NORMALIZADOS 1'
 
 & (Join-Path $PSScriptRoot 'armar-script.ps1')
 
+# Estrategia.pdf y DER.jpg están en el Drive del grupo (no en el repo):
+# bajarlos y copiarlos en entrega\ antes de correr esto.
 foreach ($obligatorio in 'Readme.txt', 'Estrategia.pdf', 'DER.jpg', 'data\script_creacion_inicial.sql') {
     if (-not (Test-Path (Join-Path $entrega $obligatorio))) {
-        Write-Host "Falta entrega\$obligatorio" -ForegroundColor Red; Read-Host 'Enter para cerrar'; exit 1
+        Write-Host "Falta entrega\$obligatorio (si es el PDF o el DER, copialo del Drive)" -ForegroundColor Red
+        Read-Host 'Enter para cerrar'; exit 1
     }
 }
 
