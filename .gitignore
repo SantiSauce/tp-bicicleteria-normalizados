@@ -1,0 +1,23 @@
+# Backup de la base (300 MB, cada uno lo baja del aula virtual y lo deja en base\)
+*.bak
+*.bak.md5
+base/*
+!base/.gitkeep
+
+# Datos personales / credenciales: NUNCA subir
+Help.txt
+ENTORNO.md
+*.env
+
+# Logs y temporales
+*.log
+herramientas/ultima-corrida.log
+~$*
+*.tmp
+
+# Zips de entrega (se generan con herramientas\armar-entrega.ps1)
+*.zip
+*.zip123
+
+# Entrega: Estrategia.pdf se exporta de docs\Estrategia.docx antes de entregar
+# (lo dejamos versionado igual para saber qué se mandó)
