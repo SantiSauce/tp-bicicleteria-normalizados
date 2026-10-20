@@ -62,3 +62,26 @@
 
 -- TODO Parte 3: escribir acá los INSERT (o SP + EXEC) en el orden de arriba.
 
+-- VENTA: una fila por número de venta (cabecera).
+-- La Maestra repite los datos de cabecera en cada renglón de la venta, así
+-- que primero nos quedamos con una sola fila por venta (subconsulta con
+-- DISTINCT) y después buscamos los Ids de las tablas ya migradas:
+--   Cliente  -> por DNI + Nombre + Apellido (criterio de la parte 2)
+--   Empleado -> por DNI (único)
+--   Local    -> por nombre (único)
+INSERT INTO NORMALIZADOS.Venta (Nro_Venta, Fecha_Hora, Total, Forma_Pago, Cliente_Id, Empleado_Id, Local_Id)
+SELECT v.Venta_Nro_Venta, v.Venta_Fecha_Hora_Venta, v.Venta_Total_Venta, v.Forma_Pago_Forma_Pago,
+       c.Cliente_Id, e.Empleado_Id, l.Local_Id
+FROM (
+    SELECT DISTINCT Venta_Nro_Venta, Venta_Fecha_Hora_Venta, Venta_Total_Venta, Forma_Pago_Forma_Pago,
+           Cliente_Dni_Cliente, Cliente_Nombre_Cliente, Cliente_Apellido_Cliente,
+           Empleado_Dni_Empleado, Local_Nombre_Local
+    FROM gd_esquema.Maestra
+    WHERE Venta_Nro_Venta IS NOT NULL
+) v
+JOIN NORMALIZADOS.Cliente  c ON c.Dni = v.Cliente_Dni_Cliente
+                            AND c.Nombre = v.Cliente_Nombre_Cliente
+                            AND c.Apellido = v.Cliente_Apellido_Cliente
+JOIN NORMALIZADOS.Empleado e ON e.Dni = v.Empleado_Dni_Empleado
+JOIN NORMALIZADOS.Local    l ON l.Nombre = v.Local_Nombre_Local;
+GO
