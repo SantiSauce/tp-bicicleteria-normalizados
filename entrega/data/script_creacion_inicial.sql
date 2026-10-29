@@ -1,4 +1,4 @@
-/* =====================================================================
+﻿/* =====================================================================
    script_creacion_inicial.sql
    TP FRBA Gestión de Bicicletería - 2C2026 - K3521 - Grupo 1 NORMALIZADOS
    Creación del modelo transaccional y migración desde gd_esquema.Maestra.
@@ -6,60 +6,39 @@
    editar los archivos de src\ y volver a generar.
    ===================================================================== */
 
-/* =====================================================================
-   00 - Base y esquema
-   TP FRBA Gestión de Bicicletería - K3521 - Grupo 1 NORMALIZADOS
-   ===================================================================== */
-
--- Trabajamos sobre la base que entrega la cátedra (nombre por defecto al restaurar el .bak).
+-- Base de datos del TP
 USE GD2C_2026;
 GO
 
--- Si el esquema ya existe (corridas de prueba), borramos todos sus objetos para poder
--- re-ejecutar el script completo. En la base limpia de la cátedra este bloque no hace nada.
+-- Si el esquema ya existe (pruebas anteriores) se borra con todos sus objetos
 IF EXISTS (SELECT 1 FROM sys.schemas WHERE name = 'NORMALIZADOS')
 BEGIN
     DECLARE @sql NVARCHAR(MAX) = N'';
-
-    -- 1) Claves foráneas (primero, para poder borrar las tablas en cualquier orden)
     SELECT @sql += N'ALTER TABLE NORMALIZADOS.' + QUOTENAME(OBJECT_NAME(fk.parent_object_id))
                  + N' DROP CONSTRAINT ' + QUOTENAME(fk.name) + N';' + CHAR(10)
     FROM sys.foreign_keys fk
     WHERE fk.schema_id = SCHEMA_ID('NORMALIZADOS');
-
-    -- 2) Vistas, procedimientos, funciones y triggers de tabla
     SELECT @sql += N'DROP ' + CASE o.type WHEN 'V' THEN N'VIEW' WHEN 'P' THEN N'PROCEDURE'
                                           WHEN 'TR' THEN N'TRIGGER' ELSE N'FUNCTION' END
                  + N' NORMALIZADOS.' + QUOTENAME(o.name) + N';' + CHAR(10)
     FROM sys.objects o
     WHERE o.schema_id = SCHEMA_ID('NORMALIZADOS')
       AND o.type IN ('V', 'P', 'TR', 'FN', 'IF', 'TF');
-
-    -- 3) Tablas
     SELECT @sql += N'DROP TABLE NORMALIZADOS.' + QUOTENAME(t.name) + N';' + CHAR(10)
     FROM sys.tables t
     WHERE t.schema_id = SCHEMA_ID('NORMALIZADOS');
-
     EXEC sp_executesql @sql;
-
-    -- 4) El esquema
     EXEC (N'DROP SCHEMA NORMALIZADOS');
 END
 GO
 
--- Creamos el esquema del grupo: todos los objetos del TP deben pertenecer a él.
+-- Esquema del grupo
 EXEC (N'CREATE SCHEMA NORMALIZADOS');
 GO
 
-/* =====================================================================
-   01 - Tablas del modelo transaccional (DER v2)
-   Tipos iguales a gd_esquema.Maestra: texto varchar(255), importes
-   numeric(38,2), fechas datetime2(6), cantidades y números int.
-   ===================================================================== */
+/* ===== Tablas ===== */
 
-/* ---------- Ubicación ---------- */
-
--- Provincia: catálogo de provincias (nombre único).
+-- Provincias
 CREATE TABLE NORMALIZADOS.Provincia (
     Provincia_Id INT IDENTITY(1,1) NOT NULL,
     Nombre       VARCHAR(255)      NOT NULL,
@@ -68,7 +47,7 @@ CREATE TABLE NORMALIZADOS.Provincia (
 );
 GO
 
--- Localidad: pertenece a una provincia; el mismo nombre puede repetirse en otra provincia.
+-- Localidades: el nombre se repite entre provincias, por eso es unico el par nombre + provincia
 CREATE TABLE NORMALIZADOS.Localidad (
     Localidad_Id INT IDENTITY(1,1) NOT NULL,
     Nombre       VARCHAR(255)      NOT NULL,
@@ -79,9 +58,7 @@ CREATE TABLE NORMALIZADOS.Localidad (
 );
 GO
 
-/* ---------- Catálogos ---------- */
-
--- Tipo_Producto: Bicicleta / Accesorio (abierto a nuevos valores).
+-- Tipos de producto (bicicleta / accesorio)
 CREATE TABLE NORMALIZADOS.Tipo_Producto (
     Tipo_Producto_Id INT IDENTITY(1,1) NOT NULL,
     Descripcion      VARCHAR(255)      NOT NULL,
@@ -90,7 +67,7 @@ CREATE TABLE NORMALIZADOS.Tipo_Producto (
 );
 GO
 
--- Categoria_Bicicleta: categoría del modelo (MTB, Urbana/Paseo, etc.).
+-- Categorias de bicicleta
 CREATE TABLE NORMALIZADOS.Categoria_Bicicleta (
     Categoria_Bicicleta_Id INT IDENTITY(1,1) NOT NULL,
     Descripcion            VARCHAR(255)      NOT NULL,
@@ -99,7 +76,7 @@ CREATE TABLE NORMALIZADOS.Categoria_Bicicleta (
 );
 GO
 
--- Categoria_Accesorios: categoría del accesorio (Iluminacion, Indumentaria, etc.).
+-- Categorias de accesorios
 CREATE TABLE NORMALIZADOS.Categoria_Accesorios (
     Categoria_Accesorios_Id INT IDENTITY(1,1) NOT NULL,
     Descripcion             VARCHAR(255)      NOT NULL,
@@ -108,7 +85,7 @@ CREATE TABLE NORMALIZADOS.Categoria_Accesorios (
 );
 GO
 
--- Categoria_Repuestos: categoría del repuesto (Frenos, Ruedas y cubiertas, etc.).
+-- Categorias de repuestos
 CREATE TABLE NORMALIZADOS.Categoria_Repuestos (
     Categoria_Repuestos_Id INT IDENTITY(1,1) NOT NULL,
     Descripcion            VARCHAR(255)      NOT NULL,
@@ -117,7 +94,7 @@ CREATE TABLE NORMALIZADOS.Categoria_Repuestos (
 );
 GO
 
--- Marca: la usan Modelo_Bicicleta y Accesorio.
+-- Marcas (las usan los modelos de bicicleta y los accesorios)
 CREATE TABLE NORMALIZADOS.Marca (
     Marca_Id    INT IDENTITY(1,1) NOT NULL,
     Descripcion VARCHAR(255)      NOT NULL,
@@ -126,9 +103,7 @@ CREATE TABLE NORMALIZADOS.Marca (
 );
 GO
 
-/* ---------- Datos maestros ---------- */
-
--- Local: sucursal de la bicicletería (nombre único).
+-- Locales
 CREATE TABLE NORMALIZADOS.Local (
     Local_Id     INT IDENTITY(1,1) NOT NULL,
     Nombre       VARCHAR(255)      NOT NULL,
@@ -142,7 +117,7 @@ CREATE TABLE NORMALIZADOS.Local (
 );
 GO
 
--- Cliente: el DNI NO es único (hay documentos compartidos por personas distintas, ver Estrategia 2.2).
+-- Clientes: el DNI no es unico porque hay documentos repetidos entre personas distintas
 CREATE TABLE NORMALIZADOS.Cliente (
     Cliente_Id       INT IDENTITY(1,1) NOT NULL,
     Dni              VARCHAR(255)      NULL,
@@ -158,7 +133,7 @@ CREATE TABLE NORMALIZADOS.Cliente (
 );
 GO
 
--- Empleado: pertenece a un único local; el DNI sí es único.
+-- Empleados: cada uno pertenece a un local
 CREATE TABLE NORMALIZADOS.Empleado (
     Empleado_Id      INT IDENTITY(1,1) NOT NULL,
     Dni              VARCHAR(255)      NOT NULL,
@@ -179,7 +154,7 @@ CREATE TABLE NORMALIZADOS.Empleado (
 );
 GO
 
--- Proveedor: el CUIT es único.
+-- Proveedores
 CREATE TABLE NORMALIZADOS.Proveedor (
     Proveedor_Id INT IDENTITY(1,1) NOT NULL,
     Razon_Social VARCHAR(255)      NULL,
@@ -194,7 +169,7 @@ CREATE TABLE NORMALIZADOS.Proveedor (
 );
 GO
 
--- Modelo_Bicicleta: lo usan Bicicleta (venta), Bicicleta_Alquiler y Reparacion.
+-- Modelos de bicicleta
 CREATE TABLE NORMALIZADOS.Modelo_Bicicleta (
     Modelo_Bicicleta_Id    INT IDENTITY(1,1) NOT NULL,
     Modelo                 VARCHAR(255)      NULL,
@@ -209,9 +184,7 @@ CREATE TABLE NORMALIZADOS.Modelo_Bicicleta (
 );
 GO
 
-/* ---------- Producto y subtipos ---------- */
-
--- Producto: entidad general vendida/comprada; la clave viene de la Maestra (PROD-xxxxx).
+-- Productos que se venden y se compran
 CREATE TABLE NORMALIZADOS.Producto (
     Cod_Producto     VARCHAR(255)  NOT NULL,
     Nombre           VARCHAR(255)  NULL,
@@ -223,7 +196,7 @@ CREATE TABLE NORMALIZADOS.Producto (
 );
 GO
 
--- Bicicleta: subtipo 1:1 de Producto (misma clave).
+-- Bicicletas en venta (subtipo de producto, misma PK)
 CREATE TABLE NORMALIZADOS.Bicicleta (
     Cod_Producto        VARCHAR(255) NOT NULL,
     Meses_Garantia      INT          NULL,
@@ -234,7 +207,7 @@ CREATE TABLE NORMALIZADOS.Bicicleta (
 );
 GO
 
--- Accesorio: subtipo 1:1 de Producto (misma clave).
+-- Accesorios (subtipo de producto, misma PK)
 CREATE TABLE NORMALIZADOS.Accesorio (
     Cod_Producto            VARCHAR(255) NOT NULL,
     Talle                   VARCHAR(255) NULL,
@@ -248,7 +221,7 @@ CREATE TABLE NORMALIZADOS.Accesorio (
 );
 GO
 
--- Bicicleta_Alquiler: flota propia de cada local, identificada por su número de serie.
+-- Flota de alquiler: cada bicicleta pertenece a un local
 CREATE TABLE NORMALIZADOS.Bicicleta_Alquiler (
     Nro_Serie            VARCHAR(255)  NOT NULL,
     Precio_Hora          NUMERIC(38,2) NULL,
@@ -263,7 +236,7 @@ CREATE TABLE NORMALIZADOS.Bicicleta_Alquiler (
 );
 GO
 
--- Repuesto: usado en reparaciones; Precio es el de lista.
+-- Repuestos (precio de lista)
 CREATE TABLE NORMALIZADOS.Repuesto (
     Cod_Repuesto           VARCHAR(255)  NOT NULL,
     Descripcion            VARCHAR(255)  NULL,
@@ -275,9 +248,7 @@ CREATE TABLE NORMALIZADOS.Repuesto (
 );
 GO
 
-/* ---------- Transaccionales ---------- */
-
--- Venta: cabecera de la venta.
+-- Ventas
 CREATE TABLE NORMALIZADOS.Venta (
     Nro_Venta   INT           NOT NULL,
     Fecha_Hora  DATETIME2(6)  NULL,
@@ -294,7 +265,7 @@ CREATE TABLE NORMALIZADOS.Venta (
 );
 GO
 
--- Detalle_Venta: un renglón por producto vendido.
+-- Renglones de cada venta
 CREATE TABLE NORMALIZADOS.Detalle_Venta (
     Detalle_Venta_Id INT IDENTITY(1,1) NOT NULL,
     Nro_Venta        INT               NOT NULL,
@@ -308,7 +279,7 @@ CREATE TABLE NORMALIZADOS.Detalle_Venta (
 );
 GO
 
--- Compra: cabecera de la compra a proveedor (sin forma de pago).
+-- Compras a proveedores
 CREATE TABLE NORMALIZADOS.Compra (
     Nro_Compra   INT           NOT NULL,
     Fecha_Compra DATETIME2(6)  NULL,
@@ -323,7 +294,7 @@ CREATE TABLE NORMALIZADOS.Compra (
 );
 GO
 
--- Detalle_Compra: un renglón por producto comprado (el subtotal se calcula).
+-- Renglones de cada compra
 CREATE TABLE NORMALIZADOS.Detalle_Compra (
     Detalle_Compra_Id INT IDENTITY(1,1) NOT NULL,
     Nro_Compra        INT               NOT NULL,
@@ -336,7 +307,7 @@ CREATE TABLE NORMALIZADOS.Detalle_Compra (
 );
 GO
 
--- Alquiler: una sola bicicleta por alquiler, por eso no tiene detalle.
+-- Alquileres: una bicicleta por alquiler, por eso no hay detalle
 CREATE TABLE NORMALIZADOS.Alquiler (
     Nro_Alquiler          INT           NOT NULL,
     Fecha_Inicio          DATETIME2(6)  NULL,
@@ -359,7 +330,7 @@ CREATE TABLE NORMALIZADOS.Alquiler (
 );
 GO
 
--- Reparacion: Bici_Serie es texto libre (bici del cliente), sin FK.
+-- Reparaciones: Bici_Serie es la bici del cliente, sin FK
 CREATE TABLE NORMALIZADOS.Reparacion (
     Nro_Reparacion         INT           NOT NULL,
     Bici_Serie             VARCHAR(255)  NULL,
@@ -384,7 +355,7 @@ CREATE TABLE NORMALIZADOS.Reparacion (
 );
 GO
 
--- Detalle_Reparacion: repuestos usados, con el precio efectivamente cobrado.
+-- Repuestos usados en cada reparacion, con el precio cobrado
 CREATE TABLE NORMALIZADOS.Detalle_Reparacion (
     Detalle_Reparacion_Id INT IDENTITY(1,1) NOT NULL,
     Nro_Reparacion        INT               NOT NULL,
@@ -398,298 +369,447 @@ CREATE TABLE NORMALIZADOS.Detalle_Reparacion (
 );
 GO
 
-/* =====================================================================
-   02 - Índices
-   Las PK y UNIQUE ya crean índice. Acá agregamos índices sobre las FK
-   que más se usan en joins (detalles y operaciones por local/cliente).
-   Ajustar cuando estén las consultas de BI.
-   ===================================================================== */
+/* ===== Indices ===== */
 
--- Renglones de una venta (join cabecera-detalle).
+-- Indice para unir ventas con sus renglones
 CREATE NONCLUSTERED INDEX IX_Detalle_Venta_Nro_Venta ON NORMALIZADOS.Detalle_Venta (Nro_Venta);
 GO
--- Renglones de una compra.
+
+-- Indice para unir compras con sus renglones
 CREATE NONCLUSTERED INDEX IX_Detalle_Compra_Nro_Compra ON NORMALIZADOS.Detalle_Compra (Nro_Compra);
 GO
--- Repuestos de una reparación.
+
+-- Indice para unir reparaciones con sus repuestos
 CREATE NONCLUSTERED INDEX IX_Detalle_Reparacion_Nro_Reparacion ON NORMALIZADOS.Detalle_Reparacion (Nro_Reparacion);
 GO
--- Operaciones por local (consultas de BI por sucursal).
+
+-- Indice para consultar ventas por local
 CREATE NONCLUSTERED INDEX IX_Venta_Local ON NORMALIZADOS.Venta (Local_Id);
 GO
+
+-- Indice para consultar alquileres por local
 CREATE NONCLUSTERED INDEX IX_Alquiler_Local ON NORMALIZADOS.Alquiler (Local_Id);
 GO
+
+-- Indice para consultar reparaciones por local
 CREATE NONCLUSTERED INDEX IX_Reparacion_Local ON NORMALIZADOS.Reparacion (Local_Id);
 GO
--- Historial de alquileres de una bicicleta.
+
+-- Indice para buscar los alquileres de una bicicleta
 CREATE NONCLUSTERED INDEX IX_Alquiler_Nro_Serie ON NORMALIZADOS.Alquiler (Nro_Serie);
 GO
--- Búsqueda de cliente durante la migración (criterio DNI + nombre + apellido).
+
+-- Indice para buscar clientes por DNI, nombre y apellido
 CREATE NONCLUSTERED INDEX IX_Cliente_Dni ON NORMALIZADOS.Cliente (Dni, Nombre, Apellido);
 GO
 
-/* =====================================================================
-   PARTE 1 de 4 - Ubicación, catálogos, Local y Proveedor
-   Responsable: (completar)
-   =====================================================================
+/* ===== Migracion 1: ubicacion, catalogos, locales y proveedores ===== */
 
-   QUÉ HAY QUE HACER
-   Cargar las tablas "de base" que todas las demás partes necesitan.
-   Por eso esta parte conviene terminarla PRIMERO: es la más corta y
-   sin ella no se puede probar nada de lo que viene después.
+-- Provincias de clientes, empleados, locales y proveedores (UNION elimina repetidos)
+INSERT INTO NORMALIZADOS.Provincia (Nombre)
+SELECT Cliente_Provincia   FROM gd_esquema.Maestra WHERE Cliente_Provincia   IS NOT NULL
+UNION
+SELECT Empleado_Provincia  FROM gd_esquema.Maestra WHERE Empleado_Provincia  IS NOT NULL
+UNION
+SELECT Local_Provincia     FROM gd_esquema.Maestra WHERE Local_Provincia     IS NOT NULL
+UNION
+SELECT Proveedor_Provincia FROM gd_esquema.Maestra WHERE Proveedor_Provincia IS NOT NULL;
+GO
 
-   ORDEN DE CARGA (respetarlo por las FK)
-     1. Provincia
-     2. Localidad                  (FK a Provincia)
-     3. Tipo_Producto
-     4. Categoria_Bicicleta
-     5. Categoria_Accesorios
-     6. Categoria_Repuestos
-     7. Marca
-     8. Local                      (FK a Localidad)
-     9. Proveedor                  (FK a Localidad)
+-- Localidades: pares localidad-provincia distintos de las cuatro entidades
+INSERT INTO NORMALIZADOS.Localidad (Nombre, Provincia_Id)
+SELECT u.Localidad, p.Provincia_Id
+FROM (
+    SELECT Cliente_Localidad   AS Localidad, Cliente_Provincia   AS Provincia FROM gd_esquema.Maestra WHERE Cliente_Localidad   IS NOT NULL
+    UNION
+    SELECT Empleado_Localidad,  Empleado_Provincia  FROM gd_esquema.Maestra WHERE Empleado_Localidad  IS NOT NULL
+    UNION
+    SELECT Local_Localidad,     Local_Provincia     FROM gd_esquema.Maestra WHERE Local_Localidad     IS NOT NULL
+    UNION
+    SELECT Proveedor_Localidad, Proveedor_Provincia FROM gd_esquema.Maestra WHERE Proveedor_Localidad IS NOT NULL
+) u
+JOIN NORMALIZADOS.Provincia p ON p.Nombre = u.Provincia;
+GO
 
-   DEPENDE DE:   nada (solo de las tablas creadas en 01_tablas.sql)
-   LA USAN:      partes 2, 3 y 4
+-- Tipos de producto
+INSERT INTO NORMALIZADOS.Tipo_Producto (Descripcion)
+SELECT DISTINCT Tipo_Producto_Tipo_Producto
+FROM gd_esquema.Maestra
+WHERE Tipo_Producto_Tipo_Producto IS NOT NULL;
+GO
 
-   ---------------------------------------------------------------------
-   CÓMO ARMAR CADA INSERT (patrón general para TODAS las partes)
-   ---------------------------------------------------------------------
-   -- <Comentario: qué carga y con qué criterio>    <- obligatorio (cátedra)
-   INSERT INTO NORMALIZADOS.<Tabla> (<columnas sin la PK IDENTITY>)
-   SELECT DISTINCT <columnas de la Maestra>
-   FROM gd_esquema.Maestra m
-   [JOIN NORMALIZADOS.<TablaPadre> p ON p.<clave natural> = m.<columna>]  -- para traer el Id de la FK
-   WHERE m.<columna clave> IS NOT NULL;            -- cada fila es UNA operación: el resto viene en NULL
-   GO
+-- Categorias de bicicleta
+INSERT INTO NORMALIZADOS.Categoria_Bicicleta (Descripcion)
+SELECT DISTINCT Categoria_Bicicleta_Categoria_Bicicleta
+FROM gd_esquema.Maestra
+WHERE Categoria_Bicicleta_Categoria_Bicicleta IS NOT NULL;
+GO
 
-   - Las PK "_Id" son IDENTITY: no se insertan, las genera SQL Server.
-   - Para llenar una FK se hace JOIN contra la tabla ya cargada usando la
-     clave natural (nombre, descripción, CUIT, etc.), nunca hardcodeando Ids.
-   - Siempre filtrar los NULL: una fila de compra trae NULL en todo lo de venta.
-   - Se puede escribir como INSERT...SELECT sueltos o como stored procedures
-     dentro del esquema NORMALIZADOS (00_esquema.sql los borra al re-correr).
+-- Categorias de accesorios
+INSERT INTO NORMALIZADOS.Categoria_Accesorios (Descripcion)
+SELECT DISTINCT Categoria_Accesorios_Categoria_Accesorio
+FROM gd_esquema.Maestra
+WHERE Categoria_Accesorios_Categoria_Accesorio IS NOT NULL;
+GO
 
-   ---------------------------------------------------------------------
-   DETALLE POR TABLA
-   ---------------------------------------------------------------------
+-- Categorias de repuestos
+INSERT INTO NORMALIZADOS.Categoria_Repuestos (Descripcion)
+SELECT DISTINCT Categoria_Repuestos_Categoria_Respuesto
+FROM gd_esquema.Maestra
+WHERE Categoria_Repuestos_Categoria_Respuesto IS NOT NULL;
+GO
 
-   1-2. PROVINCIA y LOCALIDAD
-        Las localidades/provincias aparecen en 4 entidades de la Maestra:
-          Cliente_Localidad   / Cliente_Provincia
-          Empleado_Localidad  / Empleado_Provincia
-          Local_Localidad     / Local_Provincia
-          Proveedor_Localidad / Proveedor_Provincia
-        Hay que juntar las 4 (UNION) antes de cargar.
-        OJO: el mismo nombre de localidad aparece en TODAS las provincias
-        (ej. "Ciudad Rosa" está en las 24). Una localidad = par (nombre, provincia).
-        Esperado: 24 provincias, 480 localidades.
+-- Marcas
+INSERT INTO NORMALIZADOS.Marca (Descripcion)
+SELECT DISTINCT Marca_Marca
+FROM gd_esquema.Maestra
+WHERE Marca_Marca IS NOT NULL;
+GO
 
-   3. TIPO_PRODUCTO          <- Tipo_Producto_Tipo_Producto               (esperado: 2)
-   4. CATEGORIA_BICICLETA    <- Categoria_Bicicleta_Categoria_Bicicleta   (esperado: 6)
-   5. CATEGORIA_ACCESORIOS   <- Categoria_Accesorios_Categoria_Accesorio  (esperado: 4)
-   6. CATEGORIA_REPUESTOS    <- Categoria_Repuestos_Categoria_Respuesto   (esperado: 4)
-                                (sí, la columna de la Maestra dice "Respuesto")
-   7. MARCA                  <- Marca_Marca                               (esperado: 7)
-        La usan tanto los modelos de bicicleta como los accesorios.
+-- Locales, con su localidad buscada por localidad + provincia
+INSERT INTO NORMALIZADOS.Local (Nombre, Telefono, Email, Direccion, Localidad_Id)
+SELECT DISTINCT m.Local_Nombre_Local, m.Local_Telefono_Local, m.Local_Email_Local,
+       m.Local_Direccion_Local, l.Localidad_Id
+FROM gd_esquema.Maestra m
+JOIN NORMALIZADOS.Provincia p ON p.Nombre = m.Local_Provincia
+JOIN NORMALIZADOS.Localidad l ON l.Nombre = m.Local_Localidad AND l.Provincia_Id = p.Provincia_Id
+WHERE m.Local_Nombre_Local IS NOT NULL;
+GO
 
-   8. LOCAL     <- columnas Local_*   (Nombre es único)                   (esperado: 5)
-        Localidad_Id: JOIN con Localidad + Provincia por nombre.
-   9. PROVEEDOR <- columnas Proveedor_*  (Cuit es único)                  (esperado: 5)
-        Solo vienen en las filas de compra.
+-- Proveedores (solo aparecen en las compras)
+INSERT INTO NORMALIZADOS.Proveedor (Razon_Social, Cuit, Telefono, Email, Direccion, Localidad_Id)
+SELECT DISTINCT m.Proveedor_Razon_Social_Proveedor, m.Proveedor_Cuit_Proveedor, m.Proveedor_Telefono_Proveedor,
+       m.Proveedor_Email_Proveedor, m.Proveedor_Direccion_Proveedor, l.Localidad_Id
+FROM gd_esquema.Maestra m
+JOIN NORMALIZADOS.Provincia p ON p.Nombre = m.Proveedor_Provincia
+JOIN NORMALIZADOS.Localidad l ON l.Nombre = m.Proveedor_Localidad AND l.Provincia_Id = p.Provincia_Id
+WHERE m.Proveedor_Cuit_Proveedor IS NOT NULL;
+GO
 
-   CHECKLIST ANTES DE HACER EL PULL REQUEST
-   [ ] correr-script.ps1 da OK, sin errores ni warnings
-   [ ] los conteos de 99_verificacion.sql de estas tablas coinciden
-   [ ] cada INSERT tiene su comentario explicando la intención
-   ===================================================================== */
+/* ===== Migracion 2: clientes, empleados y modelos ===== */
 
+-- Clientes: uno por cada DNI + nombre + apellido distinto
+INSERT INTO NORMALIZADOS.Cliente
+    (Dni, Nombre, Apellido, Telefono, Email, Direccion, Fecha_Nacimiento, Localidad_Id)
+SELECT DISTINCT
+    m.Cliente_Dni_Cliente,
+    m.Cliente_Nombre_Cliente,
+    m.Cliente_Apellido_Cliente,
+    m.Cliente_Telefono_Cliente,
+    m.Cliente_Email_Cliente,
+    m.Cliente_Direccion_Cliente,
+    m.Cliente_Fecha_Nacimiento_Cliente,
+    l.Localidad_Id
+FROM gd_esquema.Maestra m
+LEFT JOIN NORMALIZADOS.Provincia p
+    ON p.Nombre = m.Cliente_Provincia
+LEFT JOIN NORMALIZADOS.Localidad l
+    ON l.Nombre       = m.Cliente_Localidad
+   AND l.Provincia_Id = p.Provincia_Id
+WHERE m.Cliente_Dni_Cliente IS NOT NULL;
+GO
 
--- TODO Parte 1: escribir acá los INSERT (o SP + EXEC) en el orden de arriba.
+-- Empleados: a cada uno se le asigna el local donde tiene mas operaciones (si empatan, el primero por nombre)
+WITH Empleado_Local AS (
+    SELECT
+        m.Empleado_Dni_Empleado,
+        m.Local_Nombre_Local,
+        COUNT(*) AS Operaciones,
+        ROW_NUMBER() OVER (
+            PARTITION BY m.Empleado_Dni_Empleado
+            ORDER BY COUNT(*) DESC, m.Local_Nombre_Local ASC
+        ) AS rn
+    FROM gd_esquema.Maestra m
+    WHERE m.Empleado_Dni_Empleado IS NOT NULL
+    GROUP BY m.Empleado_Dni_Empleado, m.Local_Nombre_Local
+),
+Empleado_Datos AS (
+    SELECT DISTINCT
+        m.Empleado_Dni_Empleado,
+        m.Empleado_Nombre_Empleado,
+        m.Empleado_Apellido_Empleado,
+        m.Empleado_Puesto_Empleado,
+        m.Empleado_Fecha_Ingreso_Empleado,
+        m.Empleado_Telefono_Empleado,
+        m.Empleado_Email_Empleado,
+        m.Empleado_Domicilio_Empleado,
+        m.Empleado_Fecha_Nac_Empleado,
+        m.Empleado_Localidad,
+        m.Empleado_Provincia
+    FROM gd_esquema.Maestra m
+    WHERE m.Empleado_Dni_Empleado IS NOT NULL
+)
+INSERT INTO NORMALIZADOS.Empleado
+    (Dni, Nombre, Apellido, Puesto, Fecha_Ingreso, Telefono, Email, Domicilio,
+     Fecha_Nacimiento, Localidad_Id, Local_Id)
+SELECT
+    d.Empleado_Dni_Empleado,
+    d.Empleado_Nombre_Empleado,
+    d.Empleado_Apellido_Empleado,
+    d.Empleado_Puesto_Empleado,
+    d.Empleado_Fecha_Ingreso_Empleado,
+    d.Empleado_Telefono_Empleado,
+    d.Empleado_Email_Empleado,
+    d.Empleado_Domicilio_Empleado,
+    d.Empleado_Fecha_Nac_Empleado,
+    l.Localidad_Id,
+    lo.Local_Id
+FROM Empleado_Datos d
+INNER JOIN Empleado_Local el
+    ON el.Empleado_Dni_Empleado = d.Empleado_Dni_Empleado
+   AND el.rn = 1
+INNER JOIN NORMALIZADOS.Local lo
+    ON lo.Nombre = el.Local_Nombre_Local
+LEFT JOIN NORMALIZADOS.Provincia p
+    ON p.Nombre = d.Empleado_Provincia
+LEFT JOIN NORMALIZADOS.Localidad l
+    ON l.Nombre       = d.Empleado_Localidad
+   AND l.Provincia_Id = p.Provincia_Id;
+GO
 
+-- Modelos de bicicleta de ventas, alquileres y reparaciones
+INSERT INTO NORMALIZADOS.Modelo_Bicicleta
+    (Modelo, Rodado, Cuadro, Color, Categoria_Bicicleta_Id, Marca_Id)
+SELECT
+    u.Modelo,
+    u.Rodado,
+    u.Cuadro,
+    u.Color,
+    cb.Categoria_Bicicleta_Id,
+    ma.Marca_Id
+FROM (
+    SELECT
+        Modelo_Bicicleta_Modelo_Bicicleta   AS Modelo,
+        Modelo_Bicicleta_Rodado_Modelo_Bicicleta AS Rodado,
+        Modelo_Bicicleta_Cuadro_Modelo_Bicicleta AS Cuadro,
+        Modelo_Bicicleta_Color_Modelo_Bicicleta  AS Color,
+        Categoria_Bicicleta_Categoria_Bicicleta  AS Categoria,
+        Marca_Marca                              AS Marca
+    FROM gd_esquema.Maestra
+    WHERE Venta_Nro_Venta IS NOT NULL
+      AND Modelo_Bicicleta_Modelo_Bicicleta IS NOT NULL
+    UNION
+    SELECT
+        Modelo_Bicicleta_Modelo_Bicicleta,
+        Modelo_Bicicleta_Rodado_Modelo_Bicicleta,
+        Modelo_Bicicleta_Cuadro_Modelo_Bicicleta,
+        Modelo_Bicicleta_Color_Modelo_Bicicleta,
+        Categoria_Bicicleta_Categoria_Bicicleta,
+        Marca_Marca
+    FROM gd_esquema.Maestra
+    WHERE Alquiler_Nro_Alquiler IS NOT NULL
+      AND Modelo_Bicicleta_Modelo_Bicicleta IS NOT NULL
+    UNION
+    SELECT
+        Modelo_Bicicleta_Modelo_Bicicleta,
+        Modelo_Bicicleta_Rodado_Modelo_Bicicleta,
+        Modelo_Bicicleta_Cuadro_Modelo_Bicicleta,
+        Modelo_Bicicleta_Color_Modelo_Bicicleta,
+        Categoria_Bicicleta_Categoria_Bicicleta,
+        Marca_Marca
+    FROM gd_esquema.Maestra
+    WHERE Reparacion_Nro_Reparacion IS NOT NULL
+      AND Modelo_Bicicleta_Modelo_Bicicleta IS NOT NULL
+) u
+LEFT JOIN NORMALIZADOS.Categoria_Bicicleta cb
+    ON cb.Descripcion = u.Categoria
+LEFT JOIN NORMALIZADOS.Marca ma
+    ON ma.Descripcion = u.Marca;
+GO
 
-/* =====================================================================
-   PARTE 2 de 4 - Cliente, Empleado y Modelo_Bicicleta
-   Responsable: (completar)
-   =====================================================================
+/* ===== Migracion 3: productos, ventas y compras ===== */
 
-   QUÉ HAY QUE HACER
-   Cargar las personas y los modelos de bicicleta. Es la parte con más
-   decisiones de criterio (están explicadas en la Estrategia, punto 3.1).
+-- Productos de ventas y compras
+INSERT INTO NORMALIZADOS.Producto (Cod_Producto, Nombre, Descripcion, Precio_Venta, Tipo_Producto_Id)
+SELECT DISTINCT m.Producto_Cod_Producto, m.Producto_Nombre_Producto, m.Producto_Descripcion_Producto,
+       m.Producto_Precio_Venta_Producto, tp.Tipo_Producto_Id
+FROM gd_esquema.Maestra m
+JOIN NORMALIZADOS.Tipo_Producto tp ON tp.Descripcion = m.Tipo_Producto_Tipo_Producto
+WHERE m.Producto_Cod_Producto IS NOT NULL;
+GO
 
-   ORDEN DE CARGA
-     1. Cliente            (FK a Localidad)
-     2. Empleado           (FK a Localidad y a Local)
-     3. Modelo_Bicicleta   (FK a Categoria_Bicicleta y a Marca)
+-- Bicicletas en venta, con su modelo
+INSERT INTO NORMALIZADOS.Bicicleta (Cod_Producto, Meses_Garantia, Modelo_Bicicleta_Id)
+SELECT DISTINCT m.Producto_Cod_Producto, m.Bicicleta_Venta_Meses_Garantia_Bici_Venta, mb.Modelo_Bicicleta_Id
+FROM gd_esquema.Maestra m
+JOIN NORMALIZADOS.Modelo_Bicicleta mb
+    ON mb.Modelo = m.Modelo_Bicicleta_Modelo_Bicicleta
+   AND mb.Rodado = m.Modelo_Bicicleta_Rodado_Modelo_Bicicleta
+   AND mb.Cuadro = m.Modelo_Bicicleta_Cuadro_Modelo_Bicicleta
+   AND mb.Color  = m.Modelo_Bicicleta_Color_Modelo_Bicicleta
+JOIN NORMALIZADOS.Categoria_Bicicleta cb
+    ON cb.Categoria_Bicicleta_Id = mb.Categoria_Bicicleta_Id
+   AND cb.Descripcion            = m.Categoria_Bicicleta_Categoria_Bicicleta
+JOIN NORMALIZADOS.Marca ma
+    ON ma.Marca_Id    = mb.Marca_Id
+   AND ma.Descripcion = m.Marca_Marca
+WHERE m.Producto_Cod_Producto IS NOT NULL
+  AND m.Tipo_Producto_Tipo_Producto = 'Bicicleta';
+GO
 
-   DEPENDE DE:   Parte 1 (Localidad, Local, Categoria_Bicicleta, Marca)
-   LA USAN:      partes 3 y 4 (todas las operaciones tienen cliente y empleado)
+-- Accesorios
+INSERT INTO NORMALIZADOS.Accesorio (Cod_Producto, Talle, Color, Categoria_Accesorios_Id, Marca_Id)
+SELECT DISTINCT m.Producto_Cod_Producto, m.Accesorio_Talle_Accesorio, m.Accesorio_Color_Accesorio,
+       ca.Categoria_Accesorios_Id, ma.Marca_Id
+FROM gd_esquema.Maestra m
+LEFT JOIN NORMALIZADOS.Categoria_Accesorios ca ON ca.Descripcion = m.Categoria_Accesorios_Categoria_Accesorio
+LEFT JOIN NORMALIZADOS.Marca                 ma ON ma.Descripcion = m.Marca_Marca
+WHERE m.Producto_Cod_Producto IS NOT NULL
+  AND m.Tipo_Producto_Tipo_Producto = 'Accesorio';
+GO
 
-   El patrón de INSERT...SELECT está explicado en 10_parte1_*.sql.
+-- Ventas: una fila por numero de venta (la Maestra repite la cabecera en cada renglon)
+INSERT INTO NORMALIZADOS.Venta (Nro_Venta, Fecha_Hora, Total, Forma_Pago, Cliente_Id, Empleado_Id, Local_Id)
+SELECT v.Venta_Nro_Venta, v.Venta_Fecha_Hora_Venta, v.Venta_Total_Venta, v.Forma_Pago_Forma_Pago,
+       c.Cliente_Id, e.Empleado_Id, l.Local_Id
+FROM (
+    SELECT DISTINCT Venta_Nro_Venta, Venta_Fecha_Hora_Venta, Venta_Total_Venta, Forma_Pago_Forma_Pago,
+           Cliente_Dni_Cliente, Cliente_Nombre_Cliente, Cliente_Apellido_Cliente,
+           Empleado_Dni_Empleado, Local_Nombre_Local
+    FROM gd_esquema.Maestra
+    WHERE Venta_Nro_Venta IS NOT NULL
+) v
+JOIN NORMALIZADOS.Cliente  c ON c.Dni = v.Cliente_Dni_Cliente
+                            AND c.Nombre = v.Cliente_Nombre_Cliente
+                            AND c.Apellido = v.Cliente_Apellido_Cliente
+JOIN NORMALIZADOS.Empleado e ON e.Dni = v.Empleado_Dni_Empleado
+JOIN NORMALIZADOS.Local    l ON l.Nombre = v.Local_Nombre_Local;
+GO
 
-   ---------------------------------------------------------------------
-   DETALLE POR TABLA
-   ---------------------------------------------------------------------
+-- Renglones de venta: todas las filas, sin DISTINCT, porque hay renglones con el mismo producto que no son duplicados
+INSERT INTO NORMALIZADOS.Detalle_Venta (Nro_Venta, Cod_Producto, Cantidad, Precio_Unitario, Subtotal)
+SELECT m.Venta_Nro_Venta, m.Producto_Cod_Producto,
+       m.Detalle_Venta_Cantidad_Prod_Venta, m.Detalle_Venta_Precio_Unitario_Prod_Venta,
+       m.Detalle_Venta_Subtotal_Prod_Venta
+FROM gd_esquema.Maestra m
+WHERE m.Venta_Nro_Venta IS NOT NULL;
+GO
 
-   1. CLIENTE  <- columnas Cliente_*
-      - El DNI NO identifica a una persona: hay 126 DNI con dos personas
-        distintas. Criterio acordado: mismo cliente = mismo DNI + Nombre + Apellido.
-      - OJO con el DISTINCT: si un mismo (DNI, nombre, apellido) viniera con
-        otro teléfono/mail/dirección, un SELECT DISTINCT de todas las columnas
-        lo duplicaría. Verificar antes con un GROUP BY y, si pasa, decidir
-        cómo elegir una sola fila.
-      - Localidad_Id: JOIN con Localidad + Provincia (Cliente_Localidad, Cliente_Provincia).
-      - Las filas de compra no tienen cliente (vienen en NULL): filtrarlas.
-      - Hay un índice IX_Cliente_Dni (Dni, Nombre, Apellido) pensado para que
-        las partes 3 y 4 encuentren el Cliente_Id rápido.
+-- Compras: una fila por numero de compra
+INSERT INTO NORMALIZADOS.Compra (Nro_Compra, Fecha_Compra, Total_Compra, Proveedor_Id, Empleado_Id, Local_Id)
+SELECT c.Compra_Nro_Compra, c.Compra_Fecha_Compra, c.Compra_Total_Compra,
+       pr.Proveedor_Id, e.Empleado_Id, l.Local_Id
+FROM (
+    SELECT DISTINCT Compra_Nro_Compra, Compra_Fecha_Compra, Compra_Total_Compra,
+           Proveedor_Cuit_Proveedor, Empleado_Dni_Empleado, Local_Nombre_Local
+    FROM gd_esquema.Maestra
+    WHERE Compra_Nro_Compra IS NOT NULL
+) c
+JOIN NORMALIZADOS.Proveedor pr ON pr.Cuit   = c.Proveedor_Cuit_Proveedor
+JOIN NORMALIZADOS.Empleado  e  ON e.Dni     = c.Empleado_Dni_Empleado
+JOIN NORMALIZADOS.Local     l  ON l.Nombre  = c.Local_Nombre_Local;
+GO
 
-   2. EMPLEADO  <- columnas Empleado_*   (Dni es único)              (esperado: 25)
-      - Local_Id es obligatorio, pero en los datos los 25 empleados aparecen
-        en los 5 locales. Criterio acordado: a cada empleado se le asigna el
-        local en el que MÁS operaciones tiene (contando todas las filas donde
-        aparece). Pista: GROUP BY empleado + local, y quedarse con el máximo
-        (ROW_NUMBER() OVER (PARTITION BY ... ORDER BY COUNT(*) DESC) sirve).
-      - Ojo con los empates: definir un desempate fijo para que el resultado
-        sea siempre el mismo.
-      - Fecha de nacimiento viene en Empleado_Fecha_Nac_Empleado.
+-- Renglones de compra
+INSERT INTO NORMALIZADOS.Detalle_Compra (Nro_Compra, Cod_Producto, Cantidad, Precio_Unitario)
+SELECT m.Compra_Nro_Compra, m.Producto_Cod_Producto,
+       m.Detalle_Compra_Cantidad_Prod_Compra, m.Detalle_Compra_Precio_Unitario_Prod_Compra
+FROM gd_esquema.Maestra m
+WHERE m.Compra_Nro_Compra IS NOT NULL;
+GO
 
-   3. MODELO_BICICLETA  <- columnas Modelo_Bicicleta_*
-      - No hay código de modelo. Criterio acordado: mismo modelo = misma
-        combinación Modelo + Rodado + Cuadro + Color (+ categoría y marca).
-      - Los modelos aparecen en TRES lugares: bicicletas vendidas, bicicletas
-        de alquiler y reparaciones. Hay que cargarlos todos (no solo los de venta).
-      - Categoria_Bicicleta_Id y Marca_Id: JOIN por descripción.
+/* ===== Migracion 4: alquileres y reparaciones ===== */
 
-   CHECKLIST ANTES DE HACER EL PULL REQUEST
-   [ ] correr-script.ps1 da OK, sin errores ni warnings
-   [ ] Empleado = 25 y ningún cliente duplicado por (Dni, Nombre, Apellido)
-   [ ] cada INSERT tiene su comentario explicando la intención
-   ===================================================================== */
+-- Flota de alquiler, con el local donde se alquila cada bicicleta
+INSERT INTO NORMALIZADOS.Bicicleta_Alquiler (Nro_Serie, Precio_Hora, Precio_Dia, Estado_Bici_Alquiler, Modelo_Bicicleta_Id, Local_Id)
+SELECT DISTINCT m.Bicicleta_Alquiler_Nro_Serie_Bici_Alquiler,
+       m.Bicicleta_Alquiler_Precio_Bici_Alquiler_Hora,
+       m.Bicicleta_Alquiler_Precio_Bici_Alquiler_Dia,
+       m.Estado_Bici_Alquiler_Estado_Bici_Alquiler,
+       mb.Modelo_Bicicleta_Id, l.Local_Id
+FROM gd_esquema.Maestra m
+JOIN NORMALIZADOS.Modelo_Bicicleta mb
+    ON mb.Modelo = m.Modelo_Bicicleta_Modelo_Bicicleta
+   AND mb.Rodado = m.Modelo_Bicicleta_Rodado_Modelo_Bicicleta
+   AND mb.Cuadro = m.Modelo_Bicicleta_Cuadro_Modelo_Bicicleta
+   AND mb.Color  = m.Modelo_Bicicleta_Color_Modelo_Bicicleta
+JOIN NORMALIZADOS.Categoria_Bicicleta cb
+    ON cb.Categoria_Bicicleta_Id = mb.Categoria_Bicicleta_Id
+   AND cb.Descripcion            = m.Categoria_Bicicleta_Categoria_Bicicleta
+JOIN NORMALIZADOS.Marca ma
+    ON ma.Marca_Id    = mb.Marca_Id
+   AND ma.Descripcion = m.Marca_Marca
+JOIN NORMALIZADOS.Local l ON l.Nombre = m.Local_Nombre_Local
+WHERE m.Bicicleta_Alquiler_Nro_Serie_Bici_Alquiler IS NOT NULL;
+GO
 
+-- Repuestos
+INSERT INTO NORMALIZADOS.Repuesto (Cod_Repuesto, Descripcion, Compatibilidad, Precio, Categoria_Repuestos_Id)
+SELECT DISTINCT m.Repuesto_Cod_Repuesto, m.Repuesto_Desc_Repuesto,
+       m.Repuesto_Compatibilidad_Repuesto, m.Repuesto_Precio_Repuesto,
+       cr.Categoria_Repuestos_Id
+FROM gd_esquema.Maestra m
+LEFT JOIN NORMALIZADOS.Categoria_Repuestos cr ON cr.Descripcion = m.Categoria_Repuestos_Categoria_Respuesto
+WHERE m.Repuesto_Cod_Repuesto IS NOT NULL;
+GO
 
--- TODO Parte 2: escribir acá los INSERT (o SP + EXEC) en el orden de arriba.
+-- Alquileres: cada uno ocupa una sola fila de la Maestra
+INSERT INTO NORMALIZADOS.Alquiler (Nro_Alquiler, Fecha_Inicio, Fecha_Fin_Pactada, Fecha_Devolucion_Real,
+                                   Importe_Total, Forma_Pago, Estado_Alquiler,
+                                   Cliente_Id, Empleado_Id, Local_Id, Nro_Serie)
+SELECT m.Alquiler_Nro_Alquiler, m.Alquiler_Fecha_Inicio_Alquiler,
+       m.Alquiler_Fecha_Fin_Pactada_Alquiler, m.Alquiler_Fecha_Devolucion_Real_Alquiler,
+       m.Alquiler_Importe_Total_Alquiler, m.Forma_Pago_Forma_Pago, m.Estado_Alquiler_Estado_Alquiler,
+       c.Cliente_Id, e.Empleado_Id, l.Local_Id, m.Bicicleta_Alquiler_Nro_Serie_Bici_Alquiler
+FROM gd_esquema.Maestra m
+JOIN NORMALIZADOS.Cliente  c ON c.Dni      = m.Cliente_Dni_Cliente
+                            AND c.Nombre   = m.Cliente_Nombre_Cliente
+                            AND c.Apellido = m.Cliente_Apellido_Cliente
+JOIN NORMALIZADOS.Empleado e ON e.Dni    = m.Empleado_Dni_Empleado
+JOIN NORMALIZADOS.Local    l ON l.Nombre = m.Local_Nombre_Local
+WHERE m.Alquiler_Nro_Alquiler IS NOT NULL;
+GO
 
+-- Reparaciones: una fila por numero de reparacion
+INSERT INTO NORMALIZADOS.Reparacion (Nro_Reparacion, Bici_Serie, Fecha_Ingreso, Fecha_Entrega_Estimada,
+                                     Fecha_Entrega_Real, Diagnostico, Precio_Mano_Obra, Precio_Repuestos,
+                                     Precio_Total, Estado_Reparacion,
+                                     Cliente_Id, Empleado_Id, Local_Id, Modelo_Bicicleta_Id)
+SELECT r.Reparacion_Nro_Reparacion, r.Reparacion_Numero_Serie_Bici_Reparacion,
+       r.Reparacion_Fecha_Ingreso_Reparacion, r.Reparacion_Fecha_Entrega_Estimada_Reparacion,
+       r.Reparacion_Fecha_Entrega_Real_Reparacion, r.Reparacion_Diagnostico_Reparacion,
+       r.Reparacion_Precio_Mano_Obra_Reparacion, r.Reparacion_Precio_Repuestos_Reparacion,
+       r.Reparacion_Precio_Total_Reparacion, r.Estado_Reparacion_Estado_Reparacion,
+       c.Cliente_Id, e.Empleado_Id, l.Local_Id, mb.Modelo_Bicicleta_Id
+FROM (
+    SELECT DISTINCT Reparacion_Nro_Reparacion, Reparacion_Numero_Serie_Bici_Reparacion,
+           Reparacion_Fecha_Ingreso_Reparacion, Reparacion_Fecha_Entrega_Estimada_Reparacion,
+           Reparacion_Fecha_Entrega_Real_Reparacion, Reparacion_Diagnostico_Reparacion,
+           Reparacion_Precio_Mano_Obra_Reparacion, Reparacion_Precio_Repuestos_Reparacion,
+           Reparacion_Precio_Total_Reparacion, Estado_Reparacion_Estado_Reparacion,
+           Cliente_Dni_Cliente, Cliente_Nombre_Cliente, Cliente_Apellido_Cliente,
+           Empleado_Dni_Empleado, Local_Nombre_Local,
+           Modelo_Bicicleta_Modelo_Bicicleta, Modelo_Bicicleta_Rodado_Modelo_Bicicleta,
+           Modelo_Bicicleta_Cuadro_Modelo_Bicicleta, Modelo_Bicicleta_Color_Modelo_Bicicleta,
+           Categoria_Bicicleta_Categoria_Bicicleta, Marca_Marca
+    FROM gd_esquema.Maestra
+    WHERE Reparacion_Nro_Reparacion IS NOT NULL
+) r
+JOIN NORMALIZADOS.Cliente  c ON c.Dni      = r.Cliente_Dni_Cliente
+                            AND c.Nombre   = r.Cliente_Nombre_Cliente
+                            AND c.Apellido = r.Cliente_Apellido_Cliente
+JOIN NORMALIZADOS.Empleado e ON e.Dni    = r.Empleado_Dni_Empleado
+JOIN NORMALIZADOS.Local    l ON l.Nombre = r.Local_Nombre_Local
+JOIN NORMALIZADOS.Modelo_Bicicleta mb
+    ON mb.Modelo = r.Modelo_Bicicleta_Modelo_Bicicleta
+   AND mb.Rodado = r.Modelo_Bicicleta_Rodado_Modelo_Bicicleta
+   AND mb.Cuadro = r.Modelo_Bicicleta_Cuadro_Modelo_Bicicleta
+   AND mb.Color  = r.Modelo_Bicicleta_Color_Modelo_Bicicleta
+JOIN NORMALIZADOS.Categoria_Bicicleta cb
+    ON cb.Categoria_Bicicleta_Id = mb.Categoria_Bicicleta_Id
+   AND cb.Descripcion            = r.Categoria_Bicicleta_Categoria_Bicicleta
+JOIN NORMALIZADOS.Marca ma
+    ON ma.Marca_Id    = mb.Marca_Id
+   AND ma.Descripcion = r.Marca_Marca;
+GO
 
-/* =====================================================================
-   PARTE 3 de 4 - Productos, Ventas y Compras
-   Responsable: (completar)
-   =====================================================================
-
-   QUÉ HAY QUE HACER
-   Cargar el catálogo de productos (con sus dos subtipos) y las dos
-   operaciones que los usan: ventas y compras, con cabecera y detalle.
-
-   ORDEN DE CARGA
-     1. Producto           (FK a Tipo_Producto)
-     2. Bicicleta          (subtipo: PK = FK a Producto; FK a Modelo_Bicicleta)
-     3. Accesorio          (subtipo: PK = FK a Producto; FK a Categoria_Accesorios y Marca)
-     4. Venta              (FK a Cliente, Empleado, Local)
-     5. Detalle_Venta      (FK a Venta y Producto)
-     6. Compra             (FK a Proveedor, Empleado, Local)
-     7. Detalle_Compra     (FK a Compra y Producto)
-
-   DEPENDE DE:   Parte 1 (catálogos, Local, Proveedor) y Parte 2 (Cliente, Empleado, Modelo)
-   El patrón de INSERT...SELECT está explicado en 10_parte1_*.sql.
-
-   ---------------------------------------------------------------------
-   DETALLE POR TABLA
-   ---------------------------------------------------------------------
-
-   1. PRODUCTO  <- columnas Producto_*   PK natural: Producto_Cod_Producto  (esperado: 18)
-      - Aparece tanto en ventas como en compras: cargar desde ambas.
-   2. BICICLETA  <- productos cuyo tipo es 'Bicicleta'
-      - Meses_Garantia <- Bicicleta_Venta_Meses_Garantia_Bici_Venta
-      - Modelo_Bicicleta_Id: JOIN con Modelo_Bicicleta por la misma
-        combinación que usó la parte 2 (modelo, rodado, cuadro, color...).
-   3. ACCESORIO  <- productos cuyo tipo es 'Accesorio'
-      - Talle, Color (Accesorio_*), categoría y marca por JOIN.
-      - Un producto es bicicleta O accesorio, nunca los dos.
-
-   4. VENTA  <- una fila por Venta_Nro_Venta (PK natural)              (esperado: 43.500)
-      - La Maestra repite la cabecera en cada renglón: hay que quedarse con
-        una sola fila por número de venta.
-      - Cliente_Id: buscar por DNI + Nombre + Apellido (criterio de la parte 2).
-      - Empleado_Id por DNI; Local_Id por nombre del local.
-      - Forma_Pago tiene CHECK: los valores de la Maestra ya coinciden.
-   5. DETALLE_VENTA  <- un renglón por cada fila de venta               (esperado: ~152.418)
-      - Cantidad, Precio_Unitario y Subtotal: columnas Detalle_Venta_*.
-      - Si da distinto, revisar si hay renglones repetidos.
-
-   6. COMPRA  <- una fila por Compra_Nro_Compra                         (esperado: 36)
-      - Proveedor_Id por CUIT.
-   7. DETALLE_COMPRA  <- un renglón por cada fila de compra             (esperado: 648)
-      - No tiene subtotal (no viene en la Maestra).
-
-   PERFORMANCE: la Maestra tiene ~292 mil filas y todo el script tiene que
-   correr en menos de 10 minutos. Evitar cursores y subconsultas fila a fila:
-   hacer JOINs de conjunto.
-
-   CHECKLIST ANTES DE HACER EL PULL REQUEST
-   [ ] correr-script.ps1 da OK, sin errores ni warnings, y en tiempo razonable
-   [ ] conteos de 99_verificacion.sql de estas tablas coinciden
-   [ ] SUM(Subtotal) de cada venta coincide con su Total (o explicar por qué no)
-   [ ] cada INSERT tiene su comentario explicando la intención
-   ===================================================================== */
-
-
--- TODO Parte 3: escribir acá los INSERT (o SP + EXEC) en el orden de arriba.
-
-
-/* =====================================================================
-   PARTE 4 de 4 - Alquileres y Reparaciones
-   Responsable: (completar)
-   =====================================================================
-
-   QUÉ HAY QUE HACER
-   Cargar la flota de alquiler, los repuestos y las dos operaciones de
-   servicio: alquileres (sin detalle) y reparaciones (con detalle de repuestos).
-
-   ORDEN DE CARGA
-     1. Bicicleta_Alquiler   (FK a Modelo_Bicicleta y Local)
-     2. Repuesto             (FK a Categoria_Repuestos)
-     3. Alquiler             (FK a Cliente, Empleado, Local, Bicicleta_Alquiler)
-     4. Reparacion           (FK a Cliente, Empleado, Local, Modelo_Bicicleta)
-     5. Detalle_Reparacion   (FK a Reparacion y Repuesto)
-
-   DEPENDE DE:   Parte 1 (catálogos, Local) y Parte 2 (Cliente, Empleado, Modelo)
-   El patrón de INSERT...SELECT está explicado en 10_parte1_*.sql.
-
-   ---------------------------------------------------------------------
-   DETALLE POR TABLA
-   ---------------------------------------------------------------------
-
-   1. BICICLETA_ALQUILER  <- columnas Bicicleta_Alquiler_*             (esperado: 80)
-      - PK natural: Bicicleta_Alquiler_Nro_Serie_Bici_Alquiler.
-      - Local_Id (corrección del DER: cada local tiene su flota): sale del
-        local de sus alquileres. Ya verificamos que cada bici aparece en un
-        solo local, así que no hay que elegir.
-      - Estado_Bici_Alquiler tiene CHECK; Modelo_Bicicleta_Id por JOIN.
-   2. REPUESTO  <- columnas Repuesto_*   PK natural: Repuesto_Cod_Repuesto (esperado: 10)
-      - Precio es el de lista (Repuesto_Precio_Repuesto).
-
-   3. ALQUILER  <- una fila por Alquiler_Nro_Alquiler                  (esperado: 69.620)
-      - Una bicicleta por alquiler: Nro_Serie va directo en la cabecera.
-      - Cliente_Id por DNI + Nombre + Apellido; Empleado_Id por DNI; Local_Id por nombre.
-      - Forma_Pago y Estado_Alquiler tienen CHECK.
-
-   4. REPARACION  <- una fila por Reparacion_Nro_Reparacion            (esperado: 34.493)
-      - Bici_Serie <- Reparacion_Numero_Serie_Bici_Reparacion: es TEXTO, sin
-        FK (es la bici del cliente, no la flota).
-      - Modelo_Bicicleta_Id por JOIN con los datos de modelo de la fila.
-      - Estado_Reparacion tiene CHECK.
-   5. DETALLE_REPARACION  <- un renglón por fila de reparación         (esperado: ~69.213)
-      - Precio_Unitario es el COBRADO en esa reparación (puede diferir del de lista).
-
-   PERFORMANCE: evitar cursores; JOINs de conjunto. Límite total: 10 minutos.
-
-   CHECKLIST ANTES DE HACER EL PULL REQUEST
-   [ ] correr-script.ps1 da OK, sin errores ni warnings
-   [ ] conteos de 99_verificacion.sql de estas tablas coinciden
-   [ ] Precio_Repuestos de cada reparación = SUM(Subtotal) de su detalle (o explicar)
-   [ ] cada INSERT tiene su comentario explicando la intención
-   ===================================================================== */
-
-
--- TODO Parte 4: escribir acá los INSERT (o SP + EXEC) en el orden de arriba.
+-- Repuestos usados en cada reparacion: todas las filas, sin DISTINCT
+INSERT INTO NORMALIZADOS.Detalle_Reparacion (Nro_Reparacion, Cod_Repuesto, Cantidad, Precio_Unitario, Subtotal)
+SELECT m.Reparacion_Nro_Reparacion, m.Repuesto_Cod_Repuesto,
+       m.Detalle_Reparacion_Cantidad_Repuesto, m.Detalle_Reparacion_Precio_Unitario_Repuesto,
+       m.Detalle_Reparacion_Subtotal_Repuesto
+FROM gd_esquema.Maestra m
+WHERE m.Reparacion_Nro_Reparacion IS NOT NULL;
+GO
 
 

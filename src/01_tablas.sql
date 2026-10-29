@@ -1,12 +1,6 @@
-/* =====================================================================
-   01 - Tablas del modelo transaccional (DER v2)
-   Tipos iguales a gd_esquema.Maestra: texto varchar(255), importes
-   numeric(38,2), fechas datetime2(6), cantidades y números int.
-   ===================================================================== */
+﻿/* ===== Tablas ===== */
 
-/* ---------- Ubicación ---------- */
-
--- Provincia: catálogo de provincias (nombre único).
+-- Provincias
 CREATE TABLE NORMALIZADOS.Provincia (
     Provincia_Id INT IDENTITY(1,1) NOT NULL,
     Nombre       VARCHAR(255)      NOT NULL,
@@ -15,7 +9,7 @@ CREATE TABLE NORMALIZADOS.Provincia (
 );
 GO
 
--- Localidad: pertenece a una provincia; el mismo nombre puede repetirse en otra provincia.
+-- Localidades: el nombre se repite entre provincias, por eso es unico el par nombre + provincia
 CREATE TABLE NORMALIZADOS.Localidad (
     Localidad_Id INT IDENTITY(1,1) NOT NULL,
     Nombre       VARCHAR(255)      NOT NULL,
@@ -26,9 +20,7 @@ CREATE TABLE NORMALIZADOS.Localidad (
 );
 GO
 
-/* ---------- Catálogos ---------- */
-
--- Tipo_Producto: Bicicleta / Accesorio (abierto a nuevos valores).
+-- Tipos de producto (bicicleta / accesorio)
 CREATE TABLE NORMALIZADOS.Tipo_Producto (
     Tipo_Producto_Id INT IDENTITY(1,1) NOT NULL,
     Descripcion      VARCHAR(255)      NOT NULL,
@@ -37,7 +29,7 @@ CREATE TABLE NORMALIZADOS.Tipo_Producto (
 );
 GO
 
--- Categoria_Bicicleta: categoría del modelo (MTB, Urbana/Paseo, etc.).
+-- Categorias de bicicleta
 CREATE TABLE NORMALIZADOS.Categoria_Bicicleta (
     Categoria_Bicicleta_Id INT IDENTITY(1,1) NOT NULL,
     Descripcion            VARCHAR(255)      NOT NULL,
@@ -46,7 +38,7 @@ CREATE TABLE NORMALIZADOS.Categoria_Bicicleta (
 );
 GO
 
--- Categoria_Accesorios: categoría del accesorio (Iluminacion, Indumentaria, etc.).
+-- Categorias de accesorios
 CREATE TABLE NORMALIZADOS.Categoria_Accesorios (
     Categoria_Accesorios_Id INT IDENTITY(1,1) NOT NULL,
     Descripcion             VARCHAR(255)      NOT NULL,
@@ -55,7 +47,7 @@ CREATE TABLE NORMALIZADOS.Categoria_Accesorios (
 );
 GO
 
--- Categoria_Repuestos: categoría del repuesto (Frenos, Ruedas y cubiertas, etc.).
+-- Categorias de repuestos
 CREATE TABLE NORMALIZADOS.Categoria_Repuestos (
     Categoria_Repuestos_Id INT IDENTITY(1,1) NOT NULL,
     Descripcion            VARCHAR(255)      NOT NULL,
@@ -64,7 +56,7 @@ CREATE TABLE NORMALIZADOS.Categoria_Repuestos (
 );
 GO
 
--- Marca: la usan Modelo_Bicicleta y Accesorio.
+-- Marcas (las usan los modelos de bicicleta y los accesorios)
 CREATE TABLE NORMALIZADOS.Marca (
     Marca_Id    INT IDENTITY(1,1) NOT NULL,
     Descripcion VARCHAR(255)      NOT NULL,
@@ -73,9 +65,7 @@ CREATE TABLE NORMALIZADOS.Marca (
 );
 GO
 
-/* ---------- Datos maestros ---------- */
-
--- Local: sucursal de la bicicletería (nombre único).
+-- Locales
 CREATE TABLE NORMALIZADOS.Local (
     Local_Id     INT IDENTITY(1,1) NOT NULL,
     Nombre       VARCHAR(255)      NOT NULL,
@@ -89,7 +79,7 @@ CREATE TABLE NORMALIZADOS.Local (
 );
 GO
 
--- Cliente: el DNI NO es único (hay documentos compartidos por personas distintas, ver Estrategia 2.2).
+-- Clientes: el DNI no es unico porque hay documentos repetidos entre personas distintas
 CREATE TABLE NORMALIZADOS.Cliente (
     Cliente_Id       INT IDENTITY(1,1) NOT NULL,
     Dni              VARCHAR(255)      NULL,
@@ -105,7 +95,7 @@ CREATE TABLE NORMALIZADOS.Cliente (
 );
 GO
 
--- Empleado: pertenece a un único local; el DNI sí es único.
+-- Empleados: cada uno pertenece a un local
 CREATE TABLE NORMALIZADOS.Empleado (
     Empleado_Id      INT IDENTITY(1,1) NOT NULL,
     Dni              VARCHAR(255)      NOT NULL,
@@ -126,7 +116,7 @@ CREATE TABLE NORMALIZADOS.Empleado (
 );
 GO
 
--- Proveedor: el CUIT es único.
+-- Proveedores
 CREATE TABLE NORMALIZADOS.Proveedor (
     Proveedor_Id INT IDENTITY(1,1) NOT NULL,
     Razon_Social VARCHAR(255)      NULL,
@@ -141,7 +131,7 @@ CREATE TABLE NORMALIZADOS.Proveedor (
 );
 GO
 
--- Modelo_Bicicleta: lo usan Bicicleta (venta), Bicicleta_Alquiler y Reparacion.
+-- Modelos de bicicleta
 CREATE TABLE NORMALIZADOS.Modelo_Bicicleta (
     Modelo_Bicicleta_Id    INT IDENTITY(1,1) NOT NULL,
     Modelo                 VARCHAR(255)      NULL,
@@ -156,9 +146,7 @@ CREATE TABLE NORMALIZADOS.Modelo_Bicicleta (
 );
 GO
 
-/* ---------- Producto y subtipos ---------- */
-
--- Producto: entidad general vendida/comprada; la clave viene de la Maestra (PROD-xxxxx).
+-- Productos que se venden y se compran
 CREATE TABLE NORMALIZADOS.Producto (
     Cod_Producto     VARCHAR(255)  NOT NULL,
     Nombre           VARCHAR(255)  NULL,
@@ -170,7 +158,7 @@ CREATE TABLE NORMALIZADOS.Producto (
 );
 GO
 
--- Bicicleta: subtipo 1:1 de Producto (misma clave).
+-- Bicicletas en venta (subtipo de producto, misma PK)
 CREATE TABLE NORMALIZADOS.Bicicleta (
     Cod_Producto        VARCHAR(255) NOT NULL,
     Meses_Garantia      INT          NULL,
@@ -181,7 +169,7 @@ CREATE TABLE NORMALIZADOS.Bicicleta (
 );
 GO
 
--- Accesorio: subtipo 1:1 de Producto (misma clave).
+-- Accesorios (subtipo de producto, misma PK)
 CREATE TABLE NORMALIZADOS.Accesorio (
     Cod_Producto            VARCHAR(255) NOT NULL,
     Talle                   VARCHAR(255) NULL,
@@ -195,7 +183,7 @@ CREATE TABLE NORMALIZADOS.Accesorio (
 );
 GO
 
--- Bicicleta_Alquiler: flota propia de cada local, identificada por su número de serie.
+-- Flota de alquiler: cada bicicleta pertenece a un local
 CREATE TABLE NORMALIZADOS.Bicicleta_Alquiler (
     Nro_Serie            VARCHAR(255)  NOT NULL,
     Precio_Hora          NUMERIC(38,2) NULL,
@@ -210,7 +198,7 @@ CREATE TABLE NORMALIZADOS.Bicicleta_Alquiler (
 );
 GO
 
--- Repuesto: usado en reparaciones; Precio es el de lista.
+-- Repuestos (precio de lista)
 CREATE TABLE NORMALIZADOS.Repuesto (
     Cod_Repuesto           VARCHAR(255)  NOT NULL,
     Descripcion            VARCHAR(255)  NULL,
@@ -222,9 +210,7 @@ CREATE TABLE NORMALIZADOS.Repuesto (
 );
 GO
 
-/* ---------- Transaccionales ---------- */
-
--- Venta: cabecera de la venta.
+-- Ventas
 CREATE TABLE NORMALIZADOS.Venta (
     Nro_Venta   INT           NOT NULL,
     Fecha_Hora  DATETIME2(6)  NULL,
@@ -241,7 +227,7 @@ CREATE TABLE NORMALIZADOS.Venta (
 );
 GO
 
--- Detalle_Venta: un renglón por producto vendido.
+-- Renglones de cada venta
 CREATE TABLE NORMALIZADOS.Detalle_Venta (
     Detalle_Venta_Id INT IDENTITY(1,1) NOT NULL,
     Nro_Venta        INT               NOT NULL,
@@ -255,7 +241,7 @@ CREATE TABLE NORMALIZADOS.Detalle_Venta (
 );
 GO
 
--- Compra: cabecera de la compra a proveedor (sin forma de pago).
+-- Compras a proveedores
 CREATE TABLE NORMALIZADOS.Compra (
     Nro_Compra   INT           NOT NULL,
     Fecha_Compra DATETIME2(6)  NULL,
@@ -270,7 +256,7 @@ CREATE TABLE NORMALIZADOS.Compra (
 );
 GO
 
--- Detalle_Compra: un renglón por producto comprado (el subtotal se calcula).
+-- Renglones de cada compra
 CREATE TABLE NORMALIZADOS.Detalle_Compra (
     Detalle_Compra_Id INT IDENTITY(1,1) NOT NULL,
     Nro_Compra        INT               NOT NULL,
@@ -283,7 +269,7 @@ CREATE TABLE NORMALIZADOS.Detalle_Compra (
 );
 GO
 
--- Alquiler: una sola bicicleta por alquiler, por eso no tiene detalle.
+-- Alquileres: una bicicleta por alquiler, por eso no hay detalle
 CREATE TABLE NORMALIZADOS.Alquiler (
     Nro_Alquiler          INT           NOT NULL,
     Fecha_Inicio          DATETIME2(6)  NULL,
@@ -306,7 +292,7 @@ CREATE TABLE NORMALIZADOS.Alquiler (
 );
 GO
 
--- Reparacion: Bici_Serie es texto libre (bici del cliente), sin FK.
+-- Reparaciones: Bici_Serie es la bici del cliente, sin FK
 CREATE TABLE NORMALIZADOS.Reparacion (
     Nro_Reparacion         INT           NOT NULL,
     Bici_Serie             VARCHAR(255)  NULL,
@@ -331,7 +317,7 @@ CREATE TABLE NORMALIZADOS.Reparacion (
 );
 GO
 
--- Detalle_Reparacion: repuestos usados, con el precio efectivamente cobrado.
+-- Repuestos usados en cada reparacion, con el precio cobrado
 CREATE TABLE NORMALIZADOS.Detalle_Reparacion (
     Detalle_Reparacion_Id INT IDENTITY(1,1) NOT NULL,
     Nro_Reparacion        INT               NOT NULL,
